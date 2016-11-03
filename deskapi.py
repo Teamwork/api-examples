@@ -70,12 +70,13 @@ def get_ticket(ticket_id):
         print('error: status code is', r.status_code)
     return r.json()
 
-def add_note(ticket_id, body, status='', assigned_to=''):
+def add_note(ticket_id, body, status='', assigned_to='', attachments=[]):
     ''' Add a note to an existing ticket.
 
     Args:
         status:       'active', 'closed', etc.
         assigned_to:  ID of the user.
+        attachments:  List of IDs of files uploaded with upload_file()
     Returns:
         Decoded JSON from the server.
 
@@ -89,9 +90,38 @@ def add_note(ticket_id, body, status='', assigned_to=''):
         'body': body,
         'status': status,
         'assignedTo': assigned_to,
+        'attachmentIds[]': attachments,
     })
     if r.status_code != 200:
         print('error: status code is', r.status_code)
+    return r.json()
+
+def new_ticket(message, subject, inbox_id, customer, attachments=[]):
+    ''' Create a new ticket.
+
+    Args:
+        message:     Body in HTML.
+        subject:     Email subject.
+        inbox_id:    Inbox ID to put this message in.
+        customer:    dict with id, email, first_name, last_name.
+                     email or id is mandatory, the rest is optional
+        attachments: List of IDs of files uploaded with upload_file()
+    '''
+    
+    r = _post('/desk/v1/tickets.json', data={
+        'message': message,
+        'subject': subject,
+        'inboxId': inbox_id,
+        'customerId': customer.get('id', ''),
+        'customerEmail': customer.get('email', ''),
+        'customerFirstName': customer.get('first_name', ''),
+        'customerLastName': customer.get('last_name', ''),
+        'attachmentIds[]': attachments,
+    })
+
+    if r.status_code != 200:
+        print('error: status code is', r.status_code)
+
     return r.json()
 
 def add_customer(email, first_name, last_name):
@@ -104,6 +134,25 @@ def add_customer(email, first_name, last_name):
     })
     if r.status_code != 200:
         print('error: status code is', r.status_code)
+    return r.json()
+
+def upload_file(path):
+    ''' Upload a file. The attachment.id value in the return value can be used
+        to attach the file to a new message; for example:
+
+            file1 = deskapi.upload_file(sys.argv[0])
+            file2 = deskapi.upload_file('/etc/hosts')
+
+            r2 = deskapi.add_note(84648818, 'test', attachments=[
+                file1['attachment']['id'],
+                file2['attachment']['id'],
+            ])
+    '''
+
+    r = _post('/desk/v1/upload/attachment',
+        data={'isDraft': True},
+        files={'file': open(path, 'rb')})
+ 
     return r.json()
 
 if __name__ == '__main__':
