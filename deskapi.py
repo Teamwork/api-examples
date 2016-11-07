@@ -28,7 +28,7 @@ And you can now run the functions.
 '''
 
 from __future__ import print_function
-import sys
+import datetime, json, sys
 
 try:
     import requests
@@ -153,6 +153,33 @@ def upload_file(path):
         data={'isDraft': True},
         files={'file': open(path, 'rb')})
  
+    return r.json()
+
+def get_timelogs(ticket_id):
+    ''' Get all timelogs for a ticket. '''
+    r = _get('/desk/v1/app/timetracking/{}.json'.format(ticket_id))
+    if r.status_code != 200:
+        print('error: status code is', r.status_code)
+    return r.json()
+
+def add_timelog(ticket_id, user_id, seconds):
+    ''' Add a timelog entry for a ticket.
+
+    Args:
+        user_id:  User to log this for.
+        seconds:  Number of seconds for this timelog entry.
+    '''
+
+
+    r = _post('/desk/v1/app/timetracking/{}.json'.format(ticket_id),
+        headers={'Content-Type': 'application/json'},
+        data=json.dumps({
+            'userId': user_id,
+            'seconds': seconds,
+            'date': datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%SZ'),
+        }))
+    if r.status_code != 200:
+        print('error: status code is', r.status_code)
     return r.json()
 
 if __name__ == '__main__':
