@@ -76,7 +76,7 @@ def add_note(ticket_id, body, status='', assigned_to='', attachments=[]):
     Args:
         status:       'active', 'closed', etc.
         assigned_to:  ID of the user.
-        attachments:  List of IDs of files uploaded with upload_file()
+        attachments:  List of IDs of files uploaded with upload_attachment()
     Returns:
         Decoded JSON from the server.
 
@@ -105,7 +105,7 @@ def new_ticket(message, subject, inbox_id, customer, attachments=[]):
         inbox_id:    Inbox ID to put this message in.
         customer:    dict with id, email, first_name, last_name.
                      email or id is mandatory, the rest is optional
-        attachments: List of IDs of files uploaded with upload_file()
+        attachments: List of IDs of files uploaded with upload_attachment()
     '''
     
     r = _post('/desk/v1/tickets.json', data={
@@ -136,12 +136,22 @@ def add_customer(email, first_name, last_name):
         print('error: status code is', r.status_code)
     return r.json()
 
-def upload_file(path):
+def update_customer(customer_id, data={}):
+    r = _put('/desk/v1/customers/{}.json'.format(customer_id), data=data)
+    if r.status_code != 200:
+        print('error: status code is', r.status_code)
+    return r.json()
+
+def get_customer(customer_id):
+    r = _get('/desk/v1/customers/{}.json'.format(customer_id))
+    return r.json()
+
+def upload_attachment(path):
     ''' Upload a file. The attachment.id value in the return value can be used
         to attach the file to a new message; for example:
 
-            file1 = deskapi.upload_file(sys.argv[0])
-            file2 = deskapi.upload_file('/etc/hosts')
+            file1 = deskapi.upload_attachment(sys.argv[0])
+            file2 = deskapi.upload_attachment('/etc/hosts')
 
             r2 = deskapi.add_note(84648818, 'test', attachments=[
                 file1['attachment']['id'],
@@ -170,7 +180,6 @@ def add_timelog(ticket_id, user_id, seconds):
         seconds:  Number of seconds for this timelog entry.
     '''
 
-
     r = _post('/desk/v1/app/timetracking/{}.json'.format(ticket_id),
         headers={'Content-Type': 'application/json'},
         data=json.dumps({
@@ -180,6 +189,35 @@ def add_timelog(ticket_id, user_id, seconds):
         }))
     if r.status_code != 200:
         print('error: status code is', r.status_code)
+    return r.json()
+
+def upload_helpdocs_file(path, t='file'):
+    ''' Upload a file for usage in a Helpdocs article
+
+    Args:
+        path:  Path to file
+        t:     Type to upload; 'image' for inline image, 'file' for a download
+    '''
+    r = _post('/desk/v1/upload/helpdoc{}'.format(t),
+        files={'file': open(path, 'rb')})
+    return r.json()
+
+def add_helpdocs_article(site_id, title, slug, content, category_ids,
+        status='draft'):
+    ''' Add a new Helpdocs article.
+
+    Args:
+        status: 'draft' or 'published'
+    '''
+    r = _post('/desk/v1/helpdocs/articles.json', data={
+        'siteId': site_id,
+        'title': title,
+        'slug': slug,
+        'content': content,
+        'status': status,
+        'categories[]': category_ids,
+    })
+
     return r.json()
 
 if __name__ == '__main__':
